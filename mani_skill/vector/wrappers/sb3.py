@@ -31,10 +31,10 @@ class ManiSkillSB3VectorEnv(SB3VecEnv):
     """A wrapper for to make ManiSkill parallel simulation compatible with SB3 VecEnv and auto adds the monitor wrapper"""
 
     def __init__(self, env: BaseEnv):
+        self._env = env
         super().__init__(
             env.base_env.num_envs, env.base_env.single_observation_space, env.base_env.single_action_space
         )
-        self._env = env
         self._last_seed = None
         self.t_start = time.time()
         self.episode_returns: torch.Tensor = torch.zeros(
@@ -51,6 +51,14 @@ class ManiSkillSB3VectorEnv(SB3VecEnv):
     @property
     def base_env(self) -> BaseEnv:
         return self._env.unwrapped
+
+    @property
+    def render_mode(self):
+        return self.base_env.render_mode
+
+    @render_mode.setter
+    def render_mode(self, value):
+        self.base_env.render_mode = value
 
     def seed(self, seed: Optional[int] = None) -> list[Union[None, int]]:
         self._last_seed = seed
@@ -82,7 +90,7 @@ class ManiSkillSB3VectorEnv(SB3VecEnv):
 
         for env_idx in range(self.num_envs):
             new_info = {
-                "TimeLimit.truncated": truncations[env_idx]
+                "TimeLimit.truncated": truncations[env_idx].cpu()
                 and not terminations[env_idx],
                 "episode": {
                     "r": self.episode_returns.cpu().numpy(),
@@ -111,15 +119,15 @@ class ManiSkillSB3VectorEnv(SB3VecEnv):
         return vec_obs, rews, dones, new_infos
 
     def close(self) -> None:
-        return self._env.close()
+        return self.base_env.close()
 
     def get_attr(self, attr_name: str, indices: VecEnvIndices = None) -> list[Any]:
-        return self._env.get_attr(attr_name, indices)
+        return self.base_env.get_attr(attr_name, indices)
 
     def set_attr(
         self, attr_name: str, value: Any, indices: VecEnvIndices = None
     ) -> None:
-        return self._env.set_attr(attr_name, value, indices)
+        return self.base_env.set_attr(attr_name, value, indices)
 
     def env_method(
         self,
@@ -136,3 +144,7 @@ class ManiSkillSB3VectorEnv(SB3VecEnv):
         self, wrapper_class: Type[gym.Wrapper], indices: VecEnvIndices = None
     ) -> list[bool]:
         return [False] * self.num_envs
+
+    def get_images(self):
+        return self.base_env.render()
+
