@@ -97,13 +97,15 @@ class ManiSkillSB3VectorEnv(SB3VecEnv):
                     "l": self.episode_lengths.cpu().numpy(),
                 },
             }
-            # , "t": round(time.time() - self.t_start, 6)}
+
+            if "success" in infos:
+                new_info.update(is_success=infos["success"][env_idx].cpu().numpy())
+
             new_infos.append(new_info)
+
         # Store terminal observations
         for i, done in enumerate(dones):
             if done:
-                if "success" in infos:
-                    new_infos[i]["is_success"] = infos["success"][i].cpu().numpy()
                 new_infos[i]["terminal_observation"] = select_index_from_dict(
                     vec_obs, i
                 )
